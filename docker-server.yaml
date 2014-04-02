@@ -1,0 +1,225 @@
+heat_template_version: 2013-05-23
+
+description: |
+  This is a Heat template to deploy Linux servers running a Docker
+  container.
+
+parameter_groups:
+
+- label: Server Settings
+  parameters:
+  - server_hostname
+  - image
+  - flavor
+  - ssh_keypair_name
+
+- label: Docker Settings
+  parameters:
+  - docker_image
+#  - docker_registry
+  - docker_tag
+  - docker_command_name
+  - docker_command_params
+  - docker_container_port
+  - docker_host_port
+
+parameters:
+
+  server_hostname:
+    description: Server Name
+    type: string
+    default: docker
+    constraints:
+    - length:
+        min: 1
+        max: 64
+    - allowed_pattern: "^[a-zA-Z][a-zA-Z0-9-]*$"
+      description: |
+        Must begin with a letter and contain only alphanumeric characters.
+
+  image:
+    description: Server Image
+    type: string
+    default: Ubuntu 13.10 (Saucy Salamander) (PVHVM)
+    constraints:
+    - allowed_values:
+      - Debian 7 (Wheezy) (PVHVM)
+      - Ubuntu 12.04 LTS (Precise Pangolin)
+      - Ubuntu 13.10 (Saucy Salamander) (PVHVM)
+      description: Must be a supported operating system.
+
+  flavor:
+    description: Rackspace Cloud Server flavor
+    type: string
+    default: 2 GB Performance
+    constraints:
+    - allowed_values:
+      - 1 GB Performance
+      - 2 GB Performance
+      - 4 GB Performance
+      - 8 GB Performance
+      - 15 GB Performance
+      - 30 GB Performance
+      - 1GB Standard Instance
+      - 2GB Standard Instance
+      - 4GB Standard Instance
+      - 8GB Standard Instance
+      - 15GB Standard Instance
+      - 30GB Standard Instance
+      description: |
+        Must be a valid Rackspace Cloud Server flavor for the region you have
+        selected to deploy into.
+
+  ssh_keypair_name:
+    description: Nova keypair name for ssh access to the server
+    type: string
+    constraints:
+    - allowed_pattern: "^(.){1,64}$"
+      description: "Must be shorter than 64 characters or fewer."
+
+  docker_image:
+    description: Docker image to deploy.
+    type: string
+    default: busybox
+    constraints:
+      - length:
+          min: 1
+          max: 64
+      - allowed_pattern: |-
+          ^[a-zA-Z0-9-][a-zA-Z0-9-\/]*$
+        description: |
+          Must contain only alphanumeric characters except for '/'.
+
+  # docker_registry:
+  #   description: Docker registry from which to deploy.
+  #   type: string
+  #   default: ''
+  #   constraints:
+  #     - length:
+  #         min: 1
+  #         max: 64
+  #     - allowed_pattern: "^[a-zA-Z0-9-][a-zA-Z0-9-\/:\.@]*$"
+  #       description: |
+  #         Must contain only alphanumeric characters except for ':', '/', and '@'.
+
+  docker_tag:
+    description: Docker image tag to deploy.
+    type: string
+    default: latest
+    constraints:
+      - length:
+          min: 1
+          max: 64
+      - allowed_pattern: |-
+          ^[a-zA-Z0-9-]*$
+        description: |
+          Must contain only alphanumeric characters.
+
+  docker_command_name:
+    description: Command to run in Docker container.
+    type: string
+    default: sleep
+    constraints:
+      - length:
+          min: 1
+          max: 64
+      - allowed_pattern: |-
+          ^[a-zA-Z0-9-\/\-\.]*$
+        description: |
+          Must contain only alphanumeric characters except for '/', '.', '-'.
+
+  docker_command_params:
+    description: Paramaters to pass to command in Docker container.
+    type: string
+    default: '30'
+    constraints:
+      - length:
+          min: 1
+          max: 64
+      - allowed_pattern: |-
+          ^[a-zA-Z0-9-\/\-\.\:]*$
+        description: |
+          Must contain only alphanumeric characters except for '/', '.', '-', ':'.
+
+  # Needs to be an optional param when supported.
+  docker_container_port:
+    description: Port to expose on Docker container.
+    type: number
+    default: 8080
+    constraints:
+    - range:
+        min: 10
+        max: 65535
+      description: |
+        Port must be within the range of 10-65535.
+
+  docker_host_port:
+    description: Port to expose on Docker host.
+    type: number
+    default: 8080
+    constraints:
+    - range:
+        min: 10
+        max: 65535
+      description: |
+        Port must be within the range of 10-65535 and must not be 22.
+
+resources:
+
+  ssh_key:
+    type: "OS::Nova::KeyPair"
+    properties:
+      name: { get_param: ssh_keypair_name }
+      save_private_key: true
+
+  docker_server:
+    type: "Rackspace::Cloud::Server"
+    properties:
+      name: { get_param: server_hostname }
+      flavor: { get_param: flavor }
+      image: { get_param: image }
+      key_name: { get_resource: ssh_key }
+
+  docker_setup:
+    type: "OS::Heat::ChefSolo"
+    depends_on: docker_server
+    properties:
+      username: root
+      private_key: { get_attr: [ssh_key, private_key] }
+      host: { get_attr: [docker_server, accessIPv4] }
+      Berksfile: |
+        site :opscode
+
+        cookbook 'apt',
+          :git => 'https://github.com/opscode-cookbooks/apt',
+          :ref => '8ef28bceaa6a9eded47e640d26df4a6f3a80320c'
+        cookbook 'build-essential',
+          :git => 'https://github.com/opscode-cookbooks/build-essential',
+          :ref => 'c1f1166bcd20ac4b3dbda518a794936ac4401d7f'
+        cookbook 'docker',
+          :git => 'git://github.com/bflad/chef-docker.git',
+          :ref => '1207e6f6965853b4be1ee862f6e58cfcd43a4dc4'
+        cookbook 'rax-docker',
+          :git => 'git://github.com/ryandub/rax-docker.git',
+          :ref => '6ab417322d8dac27cbf5bfb0eae282aea72ac3f7'
+      node:
+        rax-docker:
+          image: { get_param: docker_image }
+#          registry: { get_param: docker_registry }
+          tag: { get_param: docker_tag }
+          command:
+            name: { get_param: docker_command_name }
+            params: { get_param: docker_command_params }
+          container_port: { get_param: docker_container_port }
+          host_port: { get_param: docker_host_port }
+
+        run_list: ["recipe[rax-docker::setup]",
+                   "recipe[docker]",
+                   "recipe[rax-docker::default]"]
+
+outputs:
+  private_key:
+    value: { get_attr: [ssh_key, private_key] }
+
+  server_ip:
+    value: { get_attr: [docker_server, accessIPv4] }
