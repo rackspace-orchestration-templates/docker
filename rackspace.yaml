@@ -4,11 +4,88 @@ application-name: Docker
 application-version: latest
 flavor: Single Linux server running Docker
 flavor-weight: 1
+reach-info:
+  tattoo: https://0b5294b243620310a700-e388a7f3aba385a925111b1fc6f680d4.ssl.cf2.rackcdn.com/docker-tattoo.png
+  icon-20x20: https://0b5294b243620310a700-e388a7f3aba385a925111b1fc6f680d4.ssl.cf2.rackcdn.com/docker-icon-20x20.png
 abstract: |
   Linux server with [Docker](http://docker.io/) installed.
 
   This deployment is intended for simple test cases and low traffic
   scenarios. It is not for high traffic events and is not easily scalable.
-reach-info:
-  tattoo: https://0b5294b243620310a700-e388a7f3aba385a925111b1fc6f680d4.ssl.cf2.rackcdn.com/docker-tattoo.png
-  icon-20x20: https://0b5294b243620310a700-e388a7f3aba385a925111b1fc6f680d4.ssl.cf2.rackcdn.com/docker-icon-20x20.png
+instructions: |
+  #### Getting Started
+  If you're new to Docker, check out [Getting started with
+  Docker](https://www.docker.io/gettingstarted/). The getting started document
+  will help guide you through the initial steps of managing containers.
+
+  #### Docker Deployment Notes
+  If a container was defined to be installed, this deployment will attempt to
+  install it from the [Docker index](https://index.docker.io/) or the registry
+  you specified.
+
+  If a container port was specified, but no host port, Docker will map the
+  container port to a random port on your public interfaces. To see determine
+  the mapping, find the ID of your container and then use the inspect command
+  to find the PortBindings. By using 'ps' and 'inspect', here is how we would
+  find a mapping:
+
+  ```bash
+  root@docker:~# docker ps -a
+  CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+  e33daf024abc        ubuntu:12.04        sleep 60            16 minutes ago      Exit 0                                  ubuntu
+
+  root@docker:~# docker inspect e33daf024abc
+  [{
+      "ID": "e33daf024abccb44cbc7df840a172a5a89bf8e594ee98b79efa91b54f99625ac",
+      "Created": "2014-02-03T20:05:17.490688626Z",
+      "Path": "sleep",
+      "Args": [
+          "60"
+      ],
+      "Config": {
+          "Hostname": "e33daf024abc",
+          "Domainname": "",
+          "User": "",
+          "Memory": 0,
+          "MemorySwap": 0,
+          "CpuShares": 0,
+          "AttachStdin": false,
+          "AttachStdout": false,
+          "AttachStderr": false,
+          "PortSpecs": null,
+          "ExposedPorts": {
+              "8888/tcp": {}
+          },
+      ...
+      ...
+      "HostConfig": {
+          "Binds": null,
+          "ContainerIDFile": "/var/run/ubuntu.cid",
+          "LxcConf": [],
+          "Privileged": false,
+          "PortBindings": {
+              "8888/tcp": [
+                  {
+                      "HostIp": "0.0.0.0",
+                      "HostPort": "49153"
+                  }
+              ]
+          },
+          "Links": null,
+          "PublishAllPorts": false
+      }
+  }]
+  root@docker:~#
+  ```
+
+  #### Additional Modules
+  There are hundreds of images that have been created by an engaged developer
+  community. You can browse the images on the Docker
+  [registry](https://index.docker.io).
+
+  #### Logging in via SSH
+  The private key provided in the passwords section can be used to login as
+  root via SSH.  We have an article on how to use these keys with [Mac OS X and
+  Linux](http://www.rackspace.com/knowledge_center/article/logging-in-with-a-ssh-private-key-on-linuxmac)
+  as well as [Windows using
+  PuTTY](http://www.rackspace.com/knowledge_center/article/logging-in-with-a-ssh-private-key-on-windows).
