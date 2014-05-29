@@ -70,13 +70,6 @@ parameters:
         Must be a valid Rackspace Cloud Server flavor for the region you have
         selected to deploy into.
 
-  ssh_keypair_name:
-    description: Nova keypair name for ssh access to the server
-    type: string
-    constraints:
-    - allowed_pattern: "^(.){1,64}$"
-      description: "Must be shorter than 64 characters or fewer."
-
   docker_image:
     description: Docker image to deploy.
     type: string
@@ -169,7 +162,7 @@ resources:
   ssh_key:
     type: "OS::Nova::KeyPair"
     properties:
-      name: { get_param: ssh_keypair_name }
+      name: { get_param: "OS::stack_id" }
       save_private_key: true
 
   docker_server:
@@ -220,6 +213,8 @@ resources:
 outputs:
   private_key:
     value: { get_attr: [ssh_key, private_key] }
+    description: "Private Key"
 
   server_ip:
     value: { get_attr: [docker_server, accessIPv4] }
+    description: "Server IP"
