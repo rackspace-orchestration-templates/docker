@@ -27,7 +27,7 @@ Here is an example of how to deploy this template using the
 heat --os-username <OS-USERNAME> --os-password <OS-PASSWORD> --os-tenant-id \
   <TENANT-ID> --os-auth-url https://identity.api.rackspacecloud.com/v2.0/ \
   stack-create Docker-Stack -f docker-server.yaml \
-  -P ssh_keypair_name=docker-key
+  -P server_hostname=docker-server
 ```
 
 * For UK customers, use `https://lon.identity.api.rackspacecloud.com/v2.0/` as
@@ -52,8 +52,6 @@ the `-P` flag to specify a custom parameter.
 * `image`: Operating system to install (Default: Ubuntu 13.10 (Saucy
   Salamander) (PVHVM))
 * `flavor`: Cloud server size to use. (Default: 2 GB Performance)
-* `ssh_keypair_name`: Name of the SSH key pair to register with nova (Default:
-  none)
 * `docker_image`: Docker image to deploy. (Default: busybox)
 * `docker_tag`: Docker image tag to deploy. (Default: latest)
 * `docker_command_name`: Command to run in docker container (Default: sleep)
