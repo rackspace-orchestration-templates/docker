@@ -51,7 +51,7 @@ parameters:
     - allowed_values:
       - Debian 7 (Wheezy) (PVHVM)
       - Ubuntu 12.04 LTS (Precise Pangolin)
-      - Ubuntu 13.10 (Saucy Salamander) (PVHVM)
+      - Ubuntu 14.04 LTS (Trusty Tahr)
       description: Must be a supported operating system.
 
   flavor:
