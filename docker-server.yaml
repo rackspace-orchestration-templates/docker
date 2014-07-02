@@ -8,7 +8,6 @@ parameter_groups:
 
 - label: Server Settings
   parameters:
-  - server_hostname
   - image
   - flavor
 
@@ -21,6 +20,10 @@ parameter_groups:
   - docker_command_params
   - docker_container_port
   - docker_host_port
+
+- label: rax-dev-params
+  parameters:
+  - server_hostname
 
 parameters:
 
@@ -38,8 +41,10 @@ parameters:
         Must begin with a letter and contain only alphanumeric characters.
 
   image:
-    label: Server Image
-    description: Server Image
+    label: Operating System
+    description: |
+      Server image used for all servers that are created as a part of this
+      deployment.
     type: string
     default: Ubuntu 13.10 (Saucy Salamander) (PVHVM)
     constraints:
@@ -51,7 +56,9 @@ parameters:
 
   flavor:
     label: Server Size
-    description: Rackspace Cloud Server flavor
+    description: |
+      Rackspace Cloud Server flavor to use. The size is based on the amount of
+      RAM for the provisioned server.
     type: string
     default: 2 GB Performance
     constraints:
@@ -221,7 +228,7 @@ resources:
 outputs:
   private_key:
     value: { get_attr: [ssh_key, private_key] }
-    description: "Private Key"
+    description: "SSH Private Key"
 
   server_ip:
     value: { get_attr: [docker_server, accessIPv4] }
