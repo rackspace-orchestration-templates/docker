@@ -8,19 +8,22 @@ parameter_groups:
 
 - label: Server Settings
   parameters:
-  - server_hostname
   - image
   - flavor
 
 - label: Docker Settings
   parameters:
   - docker_image
-#  - docker_registry
+  # - docker_registry
   - docker_tag
   - docker_command_name
   - docker_command_params
   - docker_container_port
   - docker_host_port
+
+- label: rax-dev-params
+  parameters:
+  - server_hostname
 
 parameters:
 
@@ -38,20 +41,24 @@ parameters:
         Must begin with a letter and contain only alphanumeric characters.
 
   image:
-    label: Server Image
-    description: Server Image
+    label: Operating System
+    description: |
+      Server image used for all servers that are created as a part of this
+      deployment.
     type: string
     default: Ubuntu 13.10 (Saucy Salamander) (PVHVM)
     constraints:
     - allowed_values:
       - Debian 7 (Wheezy) (PVHVM)
       - Ubuntu 12.04 LTS (Precise Pangolin)
-      - Ubuntu 13.10 (Saucy Salamander) (PVHVM)
+      - Ubuntu 14.04 LTS (Trusty Tahr)
       description: Must be a supported operating system.
 
   flavor:
     label: Server Size
-    description: Rackspace Cloud Server flavor
+    description: |
+      Rackspace Cloud Server flavor to use. The size is based on the amount of
+      RAM for the provisioned server.
     type: string
     default: 2 GB Performance
     constraints:
@@ -165,6 +172,16 @@ parameters:
       description: |
         Port must be within the range of 10-65535 and must not be 22.
 
+  kitchen:
+    description: "URL for a git repo containing required cookbooks"
+    type: string
+    default: https://github.com/rackspace-orchestration-templates/docker
+
+  chef_version:
+    description: Version of chef client to use
+    type: string
+    default: 11.12.8
+
 resources:
 
   ssh_key:
@@ -180,6 +197,8 @@ resources:
       flavor: { get_param: flavor }
       image: { get_param: image }
       key_name: { get_resource: ssh_key }
+      metadata:
+        rax-heat: { get_param: "OS::stack_id" }
 
   docker_setup:
     type: "OS::Heat::ChefSolo"
@@ -188,25 +207,12 @@ resources:
       username: root
       private_key: { get_attr: [ssh_key, private_key] }
       host: { get_attr: [docker_server, accessIPv4] }
-      Berksfile: |
-        site :opscode
-
-        cookbook 'apt',
-          :git => 'https://github.com/opscode-cookbooks/apt',
-          :ref => '8ef28bceaa6a9eded47e640d26df4a6f3a80320c'
-        cookbook 'build-essential',
-          :git => 'https://github.com/opscode-cookbooks/build-essential',
-          :ref => 'c1f1166bcd20ac4b3dbda518a794936ac4401d7f'
-        cookbook 'docker',
-          :git => 'git://github.com/bflad/chef-docker.git',
-          :ref => '1207e6f6965853b4be1ee862f6e58cfcd43a4dc4'
-        cookbook 'rax-docker',
-          :git => 'git://github.com/ryandub/rax-docker.git',
-          :ref => '6ab417322d8dac27cbf5bfb0eae282aea72ac3f7'
+      kitchen: { get_param: kitchen }
+      chef_version: { get_param: chef_version }
       node:
         rax-docker:
           image: { get_param: docker_image }
-#          registry: { get_param: docker_registry }
+          # registry: { get_param: docker_registry }
           tag: { get_param: docker_tag }
           command:
             name: { get_param: docker_command_name }
@@ -221,7 +227,7 @@ resources:
 outputs:
   private_key:
     value: { get_attr: [ssh_key, private_key] }
-    description: "Private Key"
+    description: "SSH Private Key"
 
   server_ip:
     value: { get_attr: [docker_server, accessIPv4] }
