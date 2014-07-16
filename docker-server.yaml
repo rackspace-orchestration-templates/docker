@@ -46,7 +46,7 @@ parameters:
       Server image used for all servers that are created as a part of this
       deployment.
     type: string
-    default: Ubuntu 13.10 (Saucy Salamander) (PVHVM)
+    default: Ubuntu 14.04 LTS (Trusty Tahr)
     constraints:
     - allowed_values:
       - Debian 7 (Wheezy) (PVHVM)
