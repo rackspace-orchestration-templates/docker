@@ -2,7 +2,7 @@ schema-version: 1.0.0
 application-family: Miscellaneous
 application-name: Docker
 application-version: latest
-flavor: Single Linux server running Docker
+flavor: Single Linux server
 flavor-weight: 1
 hidden_outputs:
   - private_key
