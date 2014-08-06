@@ -24,6 +24,8 @@ parameter_groups:
 - label: rax-dev-params
   parameters:
   - server_hostname
+  - kitchen
+  - chef_version
 
 parameters:
 
@@ -135,7 +137,7 @@ parameters:
 
   docker_command_params:
     label: Docker Arguments
-    description: Paramaters to pass to command in Docker container.
+    description: Parameters to pass to command in Docker container.
     type: string
     default: '30'
     constraints:
@@ -173,11 +175,13 @@ parameters:
         Port must be within the range of 10-65535 and must not be 22.
 
   kitchen:
+    label: Kitchen
     description: "URL for a git repo containing required cookbooks"
     type: string
     default: https://github.com/rackspace-orchestration-templates/docker
 
   chef_version:
+    label: Chef Version
     description: Version of chef client to use
     type: string
     default: 11.12.8
