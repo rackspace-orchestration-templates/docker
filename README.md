@@ -6,7 +6,10 @@ a single Linux server.
 
 Requirements
 ============
-* A Heat provider that supports the Rackspace `OS::Heat::ChefSolo` plugin.
+* A Heat provider that supports the following:
+  * OS::Nova::KeyPair
+  * Rackspace::Cloud::Server
+  * OS::Heat::ChefSolo
 * An OpenStack username, password, and tenant id.
 * [python-heatclient](https://github.com/openstack/python-heatclient)
 `>= v0.2.8`:
@@ -48,17 +51,21 @@ Parameters
 Parameters can be replaced with your own values when standing up a stack. Use
 the `-P` flag to specify a custom parameter.
 
-* `server_hostname`: Sets the hostname of the server. (Default: docker)
-* `image`: Operating system to install (Default: Ubuntu 13.10 (Saucy
-  Salamander) (PVHVM))
-* `flavor`: Cloud server size to use. (Default: 2 GB Performance)
-* `docker_image`: Docker image to deploy. (Default: busybox)
-* `docker_tag`: Docker image tag to deploy. (Default: latest)
-* `docker_command_name`: Command to run in docker container (Default: sleep)
-* `docker_command_params`: Parameters to pass to command in Docker container
+* `server_hostname`: Server Name (Default: docker)
+* `image`: Server image used for all servers that are created as a part of this
+  deployment. (Default: Ubuntu 14.04 LTS (Trusty Tahr))
+* `docker_host_port`: Port to expose on Docker host. (Default: 8080)
+* `docker_container_port`: Port to expose on Docker container. (Default: 8080)
+* `docker_command_params`: Parameters to pass to command in Docker container.
   (Default: 30)
-* `docker_container_port`: Port to expose on docker container (Default: 8080)
-* `docker_host_port`: Port to expose on the docker host (Default: 8080)
+* `docker_tag`: Docker image tag to deploy. (Default: latest)
+* `flavor`: Rackspace Cloud Server flavor to use. The size is based on the
+  amount of RAM for the provisioned server. (Default: 2 GB Performance)
+* `docker_command_name`: Command to run in Docker container. (Default: sleep)
+* `chef_version`: Version of chef client to use (Default: 11.12.8)
+* `docker_image`: Docker image to deploy. (Default: busybox)
+* `kitchen`: URL for a git repo containing required cookbooks (Default:
+  https://github.com/rackspace-orchestration-templates/docker)
 
 Outputs
 =======
