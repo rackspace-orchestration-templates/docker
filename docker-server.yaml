@@ -223,7 +223,6 @@ resources:
             params: { get_param: docker_command_params }
           container_port: { get_param: docker_container_port }
           host_port: { get_param: docker_host_port }
-
         run_list: ["recipe[rax-docker::setup]",
                    "recipe[docker]",
                    "recipe[rax-docker::default]"]
