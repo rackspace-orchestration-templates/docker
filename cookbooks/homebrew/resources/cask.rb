@@ -1,14 +1,19 @@
-actions :cask, :uncask
+actions :cask, :uncask, :install, :uninstall
 attribute :name,
   :name_attribute => true,
   :kind_of        => String,
-  :regex          => /\w+(?:\/\w+)+/
+  :regex          => /^[\w-]+$/
 
 attribute :casked,
   :kind_of => [TrueClass, FalseClass]
 
-### hax for default action
-def initialize( *args )
-  super
-  @action = :cask
+if defined?(:default_action)
+  default_action :install
+else
+  Chef::Log.warn("It appears you have Chef version #{Chef::VERSION},")
+  Chef::Log.warn('homebrew_cask resource will remove support for versions of Chef < 10.10 in the next major release of the cookbook')
+  def initialize(*args)
+    super
+    @action = :install
+  end
 end

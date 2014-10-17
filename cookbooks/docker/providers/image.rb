@@ -1,16 +1,14 @@
-include Helpers::Docker
+include Docker::Helpers
 
 def load_current_resource
   wait_until_ready!
   @current_resource = Chef::Resource::DockerImage.new(new_resource)
-  dimages = docker_cmd('images -a -notrunc')
+  dimages = docker_cmd('images -a --no-trunc')
   if dimages.stdout.include?(new_resource.image_name)
     dimages.stdout.each_line do |di_line|
       image = di(di_line)
-      unless image_id_matches?(image['id'])
-        next unless image_name_matches?(image['repository'])
-        next unless image_tag_matches_if_exists?(image['tag'])
-      end
+      next unless image_name_matches?(image['repository'])
+      next unless image_tag_matches_if_exists?(image['tag'])
       Chef::Log.debug('Matched docker image: ' + di_line.squeeze(' '))
       @current_resource.created(image['created'])
       @current_resource.repository(image['repository'])
@@ -42,7 +40,9 @@ action :import do
   end
 end
 
+# DEPRECATED: Deprecated as of Docker 0.10.0
 action :insert do
+  Chef::Log.warn('Using DEPRECATED (as of Docker 0.10.0) insert action in docker_image. Please update your workflow and cookbook.')
   if installed?
     insert
     new_resource.updated_by_last_action(true)
@@ -138,7 +138,7 @@ def di(di_line)
   image
 end
 
-def command_timeout_error_message
+def command_timeout_error_message(cmd)
   <<-EOM
 
 Command timed out:
@@ -148,11 +148,19 @@ Please adjust node image_cmd_timeout attribute or this docker_image cmd_timeout 
 EOM
 end
 
+def image_and_tag_arg
+  docker_cmd_args = new_resource.image_name
+  docker_cmd_args += ":#{new_resource.tag}" if new_resource.tag
+  docker_cmd_args
+end
+
 def image_id_matches?(id)
+  return false unless id && new_resource.id
   id.start_with?(new_resource.id)
 end
 
 def image_name_matches?(name)
+  return false unless name && new_resource.image_name
   name.include?(new_resource.image_name)
 end
 
@@ -180,7 +188,9 @@ def import
   end
 end
 
+# DEPRECATED: Deprecated as of Docker 0.10.0
 def insert
+  Chef::Log.warn('Using DEPRECATED (as of Docker 0.10.0) insert command in docker_image. Please update your workflow and cookbook.')
   docker_cmd!("insert #{new_resource.image_name} #{new_resource.source} #{new_resource.destination}")
 end
 
@@ -189,24 +199,35 @@ def installed?
 end
 
 def load
-  docker_cmd!("load < #{new_resource.source}")
+  if new_resource.input
+    load_args = cli_args(
+      'input' => new_resource.input
+    )
+    docker_cmd!("load #{load_args}")
+  else
+    docker_cmd!("load < #{new_resource.source}")
+  end
 end
 
 def pull
-  pull_args = cli_args(
-    'registry' => new_resource.registry,
-    'tag' => new_resource.tag
-  )
-  docker_cmd!("pull #{pull_args} #{new_resource.image_name}")
+  docker_cmd!("pull #{registry_image_and_tag_arg}")
 end
 
 def push
-  docker_cmd!("push #{new_resource.image_name}")
+  docker_cmd!("push #{registry_image_and_tag_arg}")
+end
+
+def registry_image_and_tag_arg
+  docker_cmd_args = ''
+  docker_cmd_args += "#{new_resource.registry}/" if new_resource.registry
+  docker_cmd_args += image_and_tag_arg
+  docker_cmd_args
 end
 
 def remove
   remove_args = cli_args(
-    'force' => new_resource.force
+    'force' => new_resource.force,
+    'no-prune' => new_resource.no_prune
   )
   image_name = new_resource.image_name
   image_name = "#{image_name}:#{new_resource.tag}" if new_resource.tag
@@ -223,7 +244,16 @@ def repository_and_tag_args
 end
 
 def save
-  docker_cmd!("save #{new_resource.image_name} > #{new_resource.destination}")
+  image_name = new_resource.image_name
+  image_name = "#{image_name}:#{new_resource.tag}" if new_resource.tag
+  if new_resource.output
+    save_args = cli_args(
+      'output' => new_resource.output
+    )
+    docker_cmd!("save #{save_args} #{image_name}")
+  else
+    docker_cmd!("save #{image_name} > #{new_resource.destination}")
+  end
 end
 
 def tag

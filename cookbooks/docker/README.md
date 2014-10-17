@@ -14,17 +14,14 @@ This cookbook was inspired by @thoward's docker-cookbook: https://github.com/tho
 
 ### Platforms
 
+* Amazon 2014.03.1 (experimental)
 * CentOS 6
 * Debian 7
-* Fedora 19
-* Fedora 20
+* Fedora 19, 20
 * Mac OS X (only docker installation currently)
 * Oracle 6
 * RHEL 6
-* Ubuntu 12.04
-* Ubuntu 12.10
-* Ubuntu 13.04
-* Ubuntu 13.10
+* Ubuntu 12.04, 12.10, 13.04, 13.10, 14.04 (experimental)
 
 ### Cookbooks
 
@@ -50,6 +47,12 @@ Third-Party Cookbooks
 
 * Add `recipe[docker]` to your node's run list
 
+### Execution Drivers
+
+If your system is running a Docker version before 0.9, you'll need to explicitly set up LXC outside of this cookbook. This will likely be true for most distros after Docker 1.0 and chef-docker 1.0 is released.
+* [lxc on community site](http://community.opscode.com/cookbooks/lxc)
+* [lxc on Github](https://github.com/hw-cookbooks/lxc/)
+
 ### Storage Drivers
 
 Beginning in chef-docker 1.0, storage driver installation and configuration is expected to be handled before this cookbook's execution, except where required by Docker.
@@ -70,63 +73,130 @@ If you need device-mapper support, consider adding the device-mapper cookbook to
 
 Then, set the `storage_driver` attribute of this cookbook to `devicemapper` (please note lack of dash).
 
+### Ubuntu 14.04 Package Installation via Docker PPA
+
+By default, this cookbook will use the docker.io package from Ubuntu 14.04's repository. To use the Docker PPA package, just set the repo_url attribute to the Docker PPA URL. e.g. `node.set['docker']['package']['repo_url'] = 'https://get.docker.io/ubuntu'`
+
 ## Attributes
+
+### Installation/System Attributes
 
 These attributes are under the `node['docker']` namespace.
 
 Attribute | Description | Type | Default
 ----------|-------------|------|--------
 arch | Architecture for docker binary (note: Docker only currently supports x86_64) | String | auto-detected (see attributes/default.rb)
-bind_socket | Socket path that docker should bind | String | unix:///var/run/docker.sock
-bind_uri | TCP URI docker should bind | String | nil
-container_cmd_timeout | container LWRP default cmd_timeout seconds | Fixnum | 60
-container_dns | container LWRP default DNS server(s) | String, Array | nil
-container_dns_search | container LWRP default DNS search domain(s) | String, Array | nil
-container_init_type | Init type for docker containers (nil, "runit", "systemd", or "upstart") | NilClass or String | `node['docker']['init_type']`
-docker_daemon_timeout | Timeout to wait for the docker daemon to start in seconds | Fixnum | 10
-exec_driver | Execution driver for docker (nil, "lxc", or "native") | String | native
-group | Group for docker socket and group_members | String | docker
-group_members | Manage docker group members | Array of Strings | []
-http_proxy | HTTP_PROXY environment variable | String | nil
-image_cmd_timeout | image LWRP default cmd_timeout seconds | Fixnum | 300
+group_members | Users to manage in `node['docker']['group']` | Array of Strings | []
 init_type | Init type for docker ("runit", "systemd", "sysv", or "upstart") | String | auto-detected (see attributes/default.rb)
-install_dir | Installation directory for docker binary | String | auto-detected (see attributes/default.rb)
-install_type | Installation type for docker ("binary", "package" or "source") | String | "package"
-logfile | Set custom DOCKER_LOGFILE | String | nil
-options | Additional options to pass to docker. These could be flags like "-api-enable-cors". | String | nil
-pidfile | Set custom DOCKER_PIDFILE | String | nil
-ramdisk | Set DOCKER_RAMDISK when using RAM disk | TrueClass or FalseClass | false
-registry_cmd_timeout | registry LWRP default cmd_timeout seconds | Fixnum | 60
-storage_driver | Storage driver for docker (nil, "aufs", or "devicemapper") | String | auto-detected (see attributes/default.rb)
-tmpdir | TMPDIR environment variable | String | nil
+install_dir | Installation directory for docker binary (custom setting only valid for non-package installations) | String | auto-detected (see attributes/default.rb)
+install_type | Installation type for docker ("binary", "package" or "source") | String | package
+ipv4_forward | Sysctl set net.ipv4.ip_forward to 1 | TrueClass, FalseClass | true
+ipv6_forward | Sysctl set net.ipv6.conf.all.forwarding to 1 | TrueClass, FalseClass | true
 version | Version of docker | String | nil
 
-### Binary Attributes
+#### Binary Installation Attributes
 
 These attributes are under the `node['docker']['binary']` namespace.
 
 Attribute | Description | Type | Default
 ----------|-------------|------|--------
-version | Version of docker binary | String | `node['docker']['version'] || latest`
+checksum | Optional SHA256 checksum for docker binary | String | auto-detected (see attributes/default.rb)
+version | Version of docker binary | String | `node['docker']['version']` (if set) or `latest`
 url | URL for downloading docker binary | String | `http://get.docker.io/builds/#{node['kernel']['name']}/#{node['docker']['arch']}/docker-#{node['docker']['binary']['version']}`
 
-### Package Attributes
+#### Package Installation Attributes
 
 These attributes are under the `node['docker']['package']` namespace.
 
 Attribute | Description | Type | Default
 ----------|-------------|------|--------
+action | Action for docker packages ("install", "update", etc.) | String | install
 distribution | Distribution for docker packages | String | auto-detected (see attributes/default.rb)
+name | Override Docker package name | String | auto-detected (see attributes/default.rb)
 repo_url | Repository URL for docker packages | String | auto-detected (see attributes/default.rb)
+repo_key | Repository GPG key URL for docker packages | String | https://get.docker.io/gpg
 
-### Source Attributes
+#### Source Installation Attributes
 
 These attributes are under the `node['docker']['source']` namespace.
 
 Attribute | Description | Type | Default
 ----------|-------------|------|--------
-ref | Repository reference for docker source | String | "master"
-url | Repository URL for docker source | String | "https://github.com/dotcloud/docker.git"
+ref | Repository reference for docker source | String | master
+url | Repository URL for docker source | String | https://github.com/dotcloud/docker.git
+
+### Docker Daemon Attributes
+
+For more information: http://docs.docker.io/en/latest/reference/commandline/cli/#daemon
+
+These attributes are under the `node['docker']` namespace.
+
+Attribute | Description | Type | Default
+----------|-------------|------|--------
+api_enable_cors | Enable CORS headers in API | TrueClass, FalseClass | nil
+bind_socket (*DEPRECATED*) | Socket path that docker should bind | String | unix:///var/run/docker.sock
+bind_uri (*DEPRECATED*) | TCP URI docker should bind | String | nil
+bip | Use this CIDR notation address for the network bridge's IP, not compatible with `bridge` | String | nil
+bridge | Attach containers to a pre-existing network bridge; use 'none' to disable container networking | String | nil
+debug | Enable debug mode | TrueClass, FalseClass | nil (implicitly false)
+dns | DNS server(s) for containers | String, Array | nil
+dns_search | DNS search domain(s) for containers | String, Array | nil
+exec_driver | Execution driver for docker | String | nil (implicitly native as of 0.9.0)
+graph | Path to use as the root of the docker runtime | String | nil (implicitly /var/lib/docker)
+group | Group for docker socket and group_members | String | nil (implicitly docker)
+host | Socket(s) that docker should bind | String, Array | unix:///var/run/docker.sock
+http_proxy | HTTP_PROXY environment variable | String | nil
+icc | Enable inter-container communication | TrueClass, FalseClass | nil (implicitly true)
+ip | Default IP address to use when binding container ports | String | nil (implicitly 0.0.0.0)
+iptables | Enable Docker's addition of iptables rules | TrueClass, FalseClass | nil (implicitly true)
+logfile | Set custom DOCKER_LOGFILE | String | nil
+mtu | Set the containers network MTU | Fixnum | nil (implicitly default route MTU or 1500 if no default route is available)
+options | Additional options to pass to docker. These could be flags like "-api-enable-cors". | String | nil
+pidfile | Path to use for daemon PID file | String | nil (implicitly /var/run/docker.pid)
+ramdisk | Set DOCKER_RAMDISK when using RAM disk | TrueClass or FalseClass | false
+restart | Restart containers on boot | TrueClass or FalseClass | auto-detected (see attributes/default.rb)
+selinux_enabled | Enable SELinux | TrueClass or FalseClass | nil
+storage_driver | Storage driver for docker | String | nil
+storage_opt | Storage driver options | String, Array | nil
+tls | Use TLS | TrueClass, FalseClass | nil (implicitly false)
+tlscacert | Trust only remotes providing a certificate signed by the CA given here | String | nil (implicitly ~/.docker/ca.pem)
+tlscert | Path to TLS certificate file | String | nil (implicitly ~/.docker/cert.pem)
+tlskey | Path to TLS key file | String | nil (implicitly ~/.docker/key.pem)
+tlsverify | Use TLS and verify the remote (daemon: verify client, client: verify daemon) | TrueClass, FalseClass | nil (implicitly false)
+tmpdir | TMPDIR environment variable | String | nil
+
+### LWRP Attributes
+
+These attributes are under the `node['docker']` namespace.
+
+Attribute | Description | Type | Default
+----------|-------------|------|--------
+docker_daemon_timeout | Timeout to wait for the docker daemon to start in seconds for LWRP commands | Fixnum | 10
+
+#### docker_container Attributes
+
+These attributes are under the `node['docker']` namespace.
+
+Attribute | Description | Type | Default
+----------|-------------|------|--------
+container_cmd_timeout | container LWRP default cmd_timeout seconds | Fixnum | 60
+container_init_type | Init type for docker containers (nil, "runit", "systemd", "sysv", or "upstart") | String | `node['docker']['init_type']`
+
+#### docker_image Attributes
+
+These attributes are under the `node['docker']` namespace.
+
+Attribute | Description | Type | Default
+----------|-------------|------|--------
+image_cmd_timeout | image LWRP default cmd_timeout seconds | Fixnum | 300
+
+#### docker_registry Attributes
+
+These attributes are under the `node['docker']` namespace.
+
+Attribute | Description | Type | Default
+----------|-------------|------|--------
+registry_cmd_timeout | registry LWRP default cmd_timeout seconds | Fixnum | 60
 
 ## Recipes
 
@@ -230,7 +300,7 @@ tag | Specific tag for image | String | nil
 
 Commit a container with optional repository, run specification, and tag:
 
-```
+```ruby
 docker_container 'myApp' do
   repository 'myRepo'
   tag Time.new.strftime("%Y%m%d%H%M")
@@ -284,12 +354,22 @@ Attribute | Description | Type | Default
 cookbook | Cookbook to grab any templates | String | docker
 init_type | Init type for container service handling | FalseClass, String | `node['docker']['container_init_type']`
 init_template | Template to use for init configuration | String | nil
+signal | Signal to send to the container | String | nil (implicitly KILL)
 socket_template | Template to use for configuring socket (relevent for init_type systemd only) | String | nil
 
 Kill a running container:
 
 ```ruby
 docker_container 'shipyard' do
+  action :kill
+end
+```
+
+Send SIGQUIT to a running container:
+
+```ruby
+docker_container 'shipyard' do
+  signal 'QUIT'
   action :kill
 end
 ```
@@ -321,9 +401,9 @@ These attributes are associated with this LWRP action.
 Attribute | Description | Type | Default
 ----------|-------------|------|--------
 cookbook | Cookbook to grab any templates | String | docker
+force | Force removal | TrueClass, FalseClass | nil
 init_type | Init type for container service handling | FalseClass, String | `node['docker']['container_init_type']`
 init_template | Template to use for init configuration | String | nil
-link | Add link to another container | String, Array | nil
 socket_template | Template to use for configuring socket (relevent for init_type systemd only) | String | nil
 
 Remove a container:
@@ -331,6 +411,40 @@ Remove a container:
 ```ruby
 docker_container 'shipyard' do
   action :remove
+end
+```
+
+#### docker_container action :remove_link
+
+These attributes are associated with this LWRP action.
+
+Attribute | Description | Type | Default
+----------|-------------|------|--------
+link | Link to remove from container | String | nil
+
+Remove a container:
+
+```ruby
+docker_container 'shipyard' do
+  link 'foo'
+  action :remove_link
+end
+```
+
+#### docker_container action :remove_volume
+
+These attributes are associated with this LWRP action.
+
+Attribute | Description | Type | Default
+----------|-------------|------|--------
+volume | Volume(s) to remove from container | String, Array | nil
+
+Remove a container:
+
+```ruby
+docker_container 'shipyard' do
+  volume %w(/extravol1 /extravol2)
+  action :remove_volume
 end
 ```
 
@@ -367,10 +481,11 @@ container_name | Name for container/service | String | nil
 cookbook | Cookbook to grab any templates | String | docker
 cpu_shares | CPU shares for container | Fixnum | nil
 detach | Detach from container when starting | TrueClass, FalseClass | nil
-dns | DNS servers for container | String, Array | `node['docker']['container_dns']`
-dns_search | DNS search domains for container | String, Array | `node['docker']['container_dns_search']`
+dns | DNS servers for container | String, Array | nil
+dns_search | DNS search domains for container | String, Array | nil
 entrypoint | Overwrite the default entrypoint set by the image | String | nil
 env | Environment variables to pass to container | String, Array | nil
+env_file | Read in a line delimited file of ENV variables | String | nil
 expose | Expose a port from the container without publishing it to your host | Fixnum, String, Array | nil
 hostname | Container hostname | String | nil
 image | Image for container | String | LWRP name
@@ -380,7 +495,8 @@ link | Add link to another container | String, Array | nil
 label | Options to pass to underlying labeling system | String | nil
 lxc_conf | Custom LXC options | String, Array | nil
 memory | Set memory limit for container | Fixnum | nil
-networking | Configure networking for container | TrueClass, FalseClass | true
+net | [Configure networking](http://docs.docker.io/reference/run/#network-settings) for container | String | nil
+networking (*DEPRECATED*) | Configure networking for container | TrueClass, FalseClass | true
 opt | Custom driver options | String, Array | nil
 port | Map network port(s) to the container | Fixnum (*DEPRECATED*), String, Array | nil
 privileged | Give extended privileges | TrueClass, FalseClass | nil
@@ -418,8 +534,8 @@ Run a container from image (docker-registry for example):
 docker_container 'docker-registry' do
   image 'samalba/docker-registry'
   detach true
-  hostname 'xx.xx.xx.xx'
-  port 5000
+  hostname 'docker-registry.example.com'
+  port '5000:5000'
   env 'SETTINGS_FLAVOR=local'
   volume '/mnt/docker:/docker-storage'
 end
@@ -572,6 +688,8 @@ end
 
 #### docker_image action :insert
 
+*ACTION DEPRECATED AS OF DOCKER 0.10.0*
+
 These attributes are associated with this LWRP action.
 
 Attribute | Description | Type | Default
@@ -595,9 +713,19 @@ These attributes are associated with this LWRP action.
 
 Attribute | Description | Type | Default
 ----------|-------------|------|--------
-source | Source path/URL | String | nil
+input | Image source (via tar archive file) | String | nil
+source | Image source (via stdin) | String | nil
 
-Load repository from path:
+Load repository via input:
+
+```ruby
+docker_image 'test' do
+  input '/path/to/test.tar'
+  action :load
+end
+```
+
+Load repository via stdin:
 
 ```ruby
 docker_image 'test' do
@@ -649,6 +777,13 @@ end
 
 #### docker_image action :remove
 
+These attributes are associated with this LWRP action.
+
+Attribute | Description | Type | Default
+----------|-------------|------|--------
+force | Force removal | TrueClass, FalseClass | nil
+no_prune | Do not delete untagged parents | TrueClass, FalseClass | nil
+
 Remove image:
 
 ```ruby
@@ -663,9 +798,20 @@ These attributes are associated with this LWRP action.
 
 Attribute | Description | Type | Default
 ----------|-------------|------|--------
-destination | Destination path | String | nil
+destination | Destination path (via stdout) | String | nil
+output | Destination path (via file) | String | nil
+tag | Save specific tag | String | nil
 
-Save repository to path:
+Save repository via file to path:
+
+```ruby
+docker_image 'test' do
+  destination '/path/to/test.tar'
+  action :save
+end
+```
+
+Save repository via stdout to path:
 
 ```ruby
 docker_image 'test' do
@@ -738,7 +884,9 @@ Please see contributing information in: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Maintainers
 
+* Tom Duffield (http://tomduffield.com)
 * Brian Flad (<bflad417@gmail.com>)
+* Fletcher Nichol (<fnichol@nichol.ca>)
 
 ## License
 

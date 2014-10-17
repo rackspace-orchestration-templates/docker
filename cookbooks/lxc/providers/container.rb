@@ -200,13 +200,13 @@ action :create do
       ::File.open(_lxc.rootfs.join('etc/shadow'), 'w') do |file|
         contents.each do |line|
           if(line.start_with?('root:'))
-            line.sub!(%r{root:.+?:}, 'root:*')
+            line.replace("root:!:::::::\n")
           end
           file.write line
         end
       end
     end
-    not_if "grep 'root:*' #{_lxc.rootfs.join('etc/shadow').to_path}"
+#    not_if "grep 'root:\*' #{_lxc.rootfs.join('etc/shadow').to_path}"
   end
 
   ruby_block "lxc start[#{new_resource.name}]" do
@@ -216,7 +216,7 @@ action :create do
     only_if do
       _lxc.rootfs.join('etc/chef/first_run.json').exist? ||
         !new_resource.container_commands.empty? ||
-        (node.run_state[:lxc][:meta][new_resource.name][:new_container] && new_resource.initialize_commands)
+        (node.run_state[:lxc][:meta][new_resource.name][:new_container] && !new_resource.initialize_commands.empty?)
     end
   end
 
@@ -225,7 +225,7 @@ action :create do
     block do
       new_resource.initialize_commands.each do |cmd|
         Chef::Log.info "Running command on #{new_resource.name}: #{cmd}"
-        _lxc.container_command(cmd, 2)
+        _lxc.container_command(cmd, 5)
       end
     end
     only_if do
@@ -279,7 +279,7 @@ action :create do
 
   file "lxc chef-validator[#{new_resource.name}]" do
     path _lxc.rootfs.join('etc/chef/validator.pem').to_path
-    content new_resource.validator_pem || node[:lxc][:validator_pem]
+    content new_resource.validator_pem || node[:lxc][:validator_pem] || node.run_state[:lxc_default_validator]
     mode 0600
     only_if{ new_resource.chef_enabled && !_lxc.rootfs.join('etc/chef/client.pem').exist? }
   end

@@ -1,21 +1,103 @@
 ## 1.0.0 (unreleased)
 
-It appears we're getting close to Docker 1.0, which will mean a 1.0 release of the cookbook that removes any attribute deprecations and *removes built-in recipes for exec_driver (such as LXC) and storage_driver (such as AUFS/devicemapper)*. I originally added these to this cookbook to help everyone get started, but the logic for them is beyond the scope of managing Docker and now Docker uses a native execution driver. I won't leave you stranded though as I'll try to get current LXC/filesystem features pulled into existing community cookbooks or create new ones with sufficient documentation in the README.
+* Changed default Docker port to IANA assigned 2375
 
-Recipe deprecations so you can be sure you can upgrade (*please check linked issues for current status*):
-
-* [#88][]: Migrate AUFS logic to separate cookbook
-* [#89][]: Migrate cgroups logic to separate cookbook
-* [#90][]: Migrate devicemapper logic to separate cookbook
-* [#91][]: Migrate LXC logic to separate cookbook
-
-Attribute deprecations so you can be sure you can upgrade:
+Attribute deprecations:
 
 * storage_type attribute renamed to storage_driver
 * virtualization_type attribute renamed to exec_driver
 * image LWRP dockerfile, image_url, and path attributes replaced with source attribute
 * container LWRP Fixnum port attribute: use full String notation from Docker documentation in port attribute instead
 * container LWRP public_port attribute: use port attribute instead
+* container LWRP networking attribute: use net attribute instead
+
+## 0.35.2
+
+* Bugfix: [#171][]: Default Ubuntu 14.04 to Docker PPA
+* Bugfix: [#175][]: Do not set --selinux-enabled in opts unless explicitly defined for older versions
+* Bugfix: [#176][]: Use docker host attribute in docker_container Upstart inotifywait
+
+## 0.35.1
+
+* Bugfix: [#172][]: Generate no cidfile by default, even when deploying as service
+* Bugfix: [#173][]: Updated docker upstart script (should fix service docker restart)
+
+## 0.35.0
+
+After a long personal hiatus (sorry!), this is the last minor release before 1.0 of the cookbook. If you can handle the Docker port number change and don't use anything deprecated, upgrading to 1.0.X from 0.35.X of the cookbook should be very easy.
+
+This release has a bunch of changes and hasn't been fully tested yet. Wanted to get it out there for broad testing. Please use caution!
+
+Major kudos to @tduffield for the [#147][] PR, which includes:
+* Binary Installation
+  * Added missing dependency resolution for using the binary. 
+* Dependency Checks
+  * Added `docker::dep_check` that will take an action if certain dependencies are not met.
+    * `node[docker][alert_on_error_action] = :fatal` will kill the chef run and print the error message.
+    * `node[docker][alert_on_error_action] = :warn` will print the error message but continue with the chef run. There is no guarantee that it will succeed though.
+* KitchenCI 
+  * Copied MiniTests to ServerSpec Tests
+  * Added new platforms (Debian 7.4)
+  * Changed provisioner from chef-solo to chef-zero
+  * Removed Ubuntu 12.10 because it is not supported by Docker and the Kernel is bad and fails all the tests.
+  * Removed tests for the source recipe. The dotcloud/docker repo actually doesn’t build any Go deliverables. 
+    * I think that the source recipe needs to be completely refactored. 
+
+Other awesome work merged:
+
+* [#142][]: Bugfix: Redeploy breaks when a link is present
+* [#139][]/[#153][]/[#154][]/[#156][]/[#157][]: Bugfix: container/image ID given as nil, fixes deprecated -notrunc
+* [#164][]: Bugfix: Removing a container should also remove its cidfile
+* [#166][]: Bugfix: Fix docker_inspect_id for Docker 1.0+
+* [#158][]/[#160][]/[#165][]: Bugfix: Fix NameError when displaying error messages for timed-out commands
+* [#169][]: Bugfix: Specify Upstart as service provider for cgroup on Ubuntu 14.04 (workaround for CHEF-5276, fixed in Chef 11.14)
+* [#137][]/[#138][]: Enhancement: Experimental Ubuntu 14.04 LTS support
+* [#144][]: Enhancement: Experimental Amazon linux support
+* [#150][]/[#152][]: Enhancement: Add net attribute, deprecate networking
+* [#168][]: Enhancement: Allow override of package name
+* [#161][]: Enhancement: Add minitest case for SysV service
+* [#149][]: Enhancement: Add --selinux-enabled daemon flag
+* Enhancement: container LWRP remove_link and remove_volume actions
+* Enhancement: Add storage-opt daemon flag
+* Enhancement: Add Docker 0.11.0, 0.11.1, 0.12.0, 1.0.0, 1.0.1 binary checksums
+
+## 0.34.2
+
+* [#141][]: Bugfix/Enhancement: Fix and enhance docker_image pull/push behavior with Docker 0.10
+  * Removes deprecated --registry and --tag CLI args from docker_image pull
+  * Adds support for registry attribute usage in docker_image pull and push
+  * Adds support for tag attribute usage in docker_image push
+
+## 0.34.1
+
+* [#134][]: Bugfix: Fix docker_registry login handling, fixes #114
+
+## 0.34.0
+
+Attributes now available for all docker daemon flags as well as system IP forwarding.
+
+* REMOVED: container_dns* attributes (use replacement dns* attributes on daemon for all containers or docker_container dns* attributes instead)
+* DEPRECATED: bind_* attributes to match docker terminology (use host attribute instead)
+* Bugfix: [#132][]: Do Not Explicitly Set storage_driver Attribute
+* Bugfix: [#133][]: Remove explicit false defaults in resources
+* Bugfix: [#114][]: Error executing action login on resource docker_registry
+* Enhancement: [#115][]: Add IP forwarding attributes
+* Enhancement: [#116][]: Docker 0.10.0: Add --no-prune to docker rmi
+* Enhancement: [#117][]: Docker 0.10.0: Add --output flag to docker save (as well as tag support)
+* Enhancement: [#118][]: Docker 0.10.0: Add --input flag to docker load
+* Enhancement: [#119][]: Docker 0.10.0: Add support for --env-file to load environment variables from files
+* Enhancement: [#120][]: Docker 0.10.0: Deprecate docker insert
+* Enhancement: [#123][]: Add docker kill --signal
+* Enhancement: [#124][]: Add all docker daemon options as attributes
+* Enhancement: [#125][]: Use dns* attributes to set docker daemon options, not defaults per-container
+* Enhancement: [#128][]: Add checksum attribute for binary downloads
+* Enhancement: [#126][]: Set long option names for specified docker daemon options
+* Enhancement: [#127][]: Use a helper function to specify single line docker daemon options
+
+## 0.33.1
+
+* Bugfix: [#112][]: Defines runner methods for ChefSpec matchers
+* Bugfix: [#113][]: [D-15] Fedora 19 installs Docker 0.8.1, does not have the -G or -e flag
 
 ## 0.33.0
 
@@ -424,5 +506,50 @@ Lots of community contributions this release -- thanks!
 [#109]: https://github.com/bflad/chef-docker/issues/109
 [#110]: https://github.com/bflad/chef-docker/issues/110
 [#111]: https://github.com/bflad/chef-docker/issues/111
+[#112]: https://github.com/bflad/chef-docker/issues/112
+[#113]: https://github.com/bflad/chef-docker/issues/113
+[#114]: https://github.com/bflad/chef-docker/issues/114
+[#115]: https://github.com/bflad/chef-docker/issues/115
+[#116]: https://github.com/bflad/chef-docker/issues/116
+[#117]: https://github.com/bflad/chef-docker/issues/117
+[#118]: https://github.com/bflad/chef-docker/issues/118
+[#119]: https://github.com/bflad/chef-docker/issues/119
+[#120]: https://github.com/bflad/chef-docker/issues/120
+[#123]: https://github.com/bflad/chef-docker/issues/123
+[#124]: https://github.com/bflad/chef-docker/issues/124
+[#125]: https://github.com/bflad/chef-docker/issues/125
+[#126]: https://github.com/bflad/chef-docker/issues/126
+[#127]: https://github.com/bflad/chef-docker/issues/127
+[#128]: https://github.com/bflad/chef-docker/issues/128
+[#132]: https://github.com/bflad/chef-docker/issues/132
+[#133]: https://github.com/bflad/chef-docker/issues/133
+[#134]: https://github.com/bflad/chef-docker/issues/134
+[#137]: https://github.com/bflad/chef-docker/issues/137
+[#138]: https://github.com/bflad/chef-docker/issues/138
+[#139]: https://github.com/bflad/chef-docker/issues/139
+[#141]: https://github.com/bflad/chef-docker/issues/141
+[#142]: https://github.com/bflad/chef-docker/issues/142
+[#144]: https://github.com/bflad/chef-docker/issues/144
+[#147]: https://github.com/bflad/chef-docker/issues/147
+[#149]: https://github.com/bflad/chef-docker/issues/149
+[#150]: https://github.com/bflad/chef-docker/issues/150
+[#152]: https://github.com/bflad/chef-docker/issues/152
+[#153]: https://github.com/bflad/chef-docker/issues/153
+[#154]: https://github.com/bflad/chef-docker/issues/154
+[#156]: https://github.com/bflad/chef-docker/issues/156
+[#157]: https://github.com/bflad/chef-docker/issues/157
+[#158]: https://github.com/bflad/chef-docker/issues/158
+[#160]: https://github.com/bflad/chef-docker/issues/160
+[#161]: https://github.com/bflad/chef-docker/issues/161
+[#164]: https://github.com/bflad/chef-docker/issues/164
+[#165]: https://github.com/bflad/chef-docker/issues/165
+[#166]: https://github.com/bflad/chef-docker/issues/166
+[#168]: https://github.com/bflad/chef-docker/issues/168
+[#169]: https://github.com/bflad/chef-docker/issues/169
+[#171]: https://github.com/bflad/chef-docker/issues/171
+[#172]: https://github.com/bflad/chef-docker/issues/172
+[#173]: https://github.com/bflad/chef-docker/issues/173
+[#175]: https://github.com/bflad/chef-docker/issues/175
+[#176]: https://github.com/bflad/chef-docker/issues/176
 [@jcrobak]: https://github.com/jcrobak
 [@wingrunr21]: https://github.com/wingrunr21

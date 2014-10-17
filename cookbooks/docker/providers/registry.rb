@@ -1,4 +1,4 @@
-include Helpers::Docker
+include Docker::Helpers
 
 def load_current_resource
   @current_resource = Chef::Resource::DockerRegistry.new(new_resource)
@@ -20,7 +20,7 @@ action :login do
   end
 end
 
-def command_timeout_error_message
+def command_timeout_error_message(cmd)
   <<-EOM
 
 Command timed out:
@@ -31,7 +31,7 @@ EOM
 end
 
 def logged_in?
-  @current_resource.server
+  @current_resource.username ? true : false
 end
 
 def login
