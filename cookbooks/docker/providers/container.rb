@@ -1,14 +1,10 @@
-include Helpers::Docker
+include Docker::Helpers
 
 def load_current_resource
   @current_resource = Chef::Resource::DockerContainer.new(new_resource)
   wait_until_ready!
   docker_containers.each do |ps|
-    unless container_id_matches?(ps['id'])
-      next unless container_image_matches?(ps['image'])
-      next unless container_command_matches_if_exists?(ps['command'])
-      next unless container_name_matches_if_exists?(ps['names'])
-    end
+    next unless container_matches?(ps)
     Chef::Log.debug('Matched docker container: ' + ps['line'].squeeze(' '))
     @current_resource.container_name(ps['names'])
     @current_resource.created(ps['created'])
@@ -49,7 +45,7 @@ end
 
 action :redeploy do
   stop if running?
-  remove if exists?
+  remove_container if exists?
   run
   new_resource.updated_by_last_action(true)
 end
@@ -63,6 +59,14 @@ action :remove do
     remove
     new_resource.updated_by_last_action(true)
   end
+end
+
+action :remove_link do
+  new_resource.updated_by_last_action(remove_link)
+end
+
+action :remove_volume do
+  new_resource.updated_by_last_action(remove_volume)
 end
 
 action :restart do
@@ -104,14 +108,6 @@ action :wait do
   end
 end
 
-def cidfile
-  if service?
-    new_resource.cidfile || "/var/run/#{service_name}.cid"
-  else
-    new_resource.cidfile
-  end
-end
-
 def commit
   commit_args = cli_args(
     'author' => new_resource.author,
@@ -126,24 +122,44 @@ def commit
   docker_cmd!("commit #{commit_args} #{current_resource.id} #{commit_end_args}")
 end
 
+def container_matches?(ps)
+  return true if container_id_matches?(ps['id'])
+  return true if container_name_matches?(ps['names'])
+  return false unless container_image_matches?(ps['image'])
+  return false unless container_command_matches_if_exists?(ps['command'])
+  return false unless container_name_matches_if_exists?(ps['names'])
+  true
+end
+
 def container_command_matches_if_exists?(command)
-  return true if new_resource.command.nil?
-  # try the exact command but also the command with the ' and " stripped out, since docker will
-  # sometimes strip out quotes.
-  subcommand = new_resource.command.gsub(/['"]/, '')
-  command.include?(new_resource.command) || command.include?(subcommand)
+  if new_resource.command
+    # try the exact command but also the command with the ' and " stripped out, since docker will
+    # sometimes strip out quotes.
+    subcommand = new_resource.command.gsub(/['"]/, '')
+    command.include?(new_resource.command) || command.include?(subcommand)
+  else
+    true
+  end
 end
 
 def container_id_matches?(id)
+  return false unless id && new_resource.id
   id.start_with?(new_resource.id)
 end
 
 def container_image_matches?(image)
+  return false unless image && new_resource.image
   image.include?(new_resource.image)
 end
 
+def container_name_matches?(names)
+  return false unless names && new_resource.container_name
+  return true if names.split(',').include?(new_resource.container_name)
+  false
+end
+
 def container_name_matches_if_exists?(names)
-  return false if new_resource.container_name && new_resource.container_name != names
+  return false if new_resource.container_name && names.split(',').include?(new_resource.container_name)
   true
 end
 
@@ -196,7 +212,7 @@ end
 #
 # The array of hashes is returned.
 def docker_containers
-  dps = docker_cmd!('ps -a -notrunc')
+  dps = docker_cmd!('ps -a --no-trunc')
 
   lines = dps.stdout.lines.to_a
   ranges = get_ranges(lines[0])
@@ -204,21 +220,20 @@ def docker_containers
   lines[1, lines.length].map do |line|
     ps = { 'line' => line }
     [:id, :image, :command, :created, :status, :ports, :names].each do |name|
-      if ranges.key?(name)
-        start = ranges[name][0]
-        if ranges[name].length == 2
-          finish = ranges[name][1]
-        else
-          finish = line.length
-        end
-        ps[name.to_s] = line[start..finish - 1].strip
+      next unless ranges.key?(name)
+      start = ranges[name][0]
+      if ranges[name].length == 2
+        finish = ranges[name][1]
+      else
+        finish = line.length
       end
+      ps[name.to_s] = line[start..finish - 1].strip
     end
     ps
   end
 end
 
-def command_timeout_error_message
+def command_timeout_error_message(cmd)
   <<-EOM
 
 Command timed out:
@@ -240,7 +255,10 @@ def kill
   if service?
     service_stop
   else
-    docker_cmd!("kill #{current_resource.id}")
+    kill_args = cli_args(
+      'signal' => new_resource.signal
+    )
+    docker_cmd!("kill #{kill_args} #{current_resource.id}")
   end
 end
 
@@ -256,12 +274,42 @@ def port
 end
 
 def remove
+  remove_container
+  service_remove if service?
+end
+
+def remove_container
   rm_args = cli_args(
-    'force' => new_resource.force,
-    'link' => new_resource.link
+    'force' => new_resource.force
   )
   docker_cmd!("rm #{rm_args} #{current_resource.id}")
-  service_remove if service?
+  remove_cidfile if new_resource.cidfile
+end
+
+def remove_cidfile
+  # run at compile-time to ensure cidfile is gone before running docker_cmd()
+  file new_resource.cidfile do
+    action :nothing
+  end.run_action(:delete)
+end
+
+def remove_link
+  return false if new_resource.link.nil? || new_resource.link.empty?
+  rm_args = cli_args(
+    'link' => true
+  )
+  link_args = Array(new_resource.link).map do |link|
+    container_name + '/' + link
+  end
+  docker_cmd!("rm #{rm_args} #{link_args.join(' ')}")
+end
+
+def remove_volume
+  return false if new_resource.volume.nil? || new_resource.volume.empty?
+  rm_args = cli_args(
+    'volume' => Array(new_resource.volume)
+  )
+  docker_cmd!("rm #{rm_args} #{current_resource.id}")
 end
 
 def restart
@@ -276,11 +324,12 @@ end
 def run
   run_args = cli_args(
     'cpu-shares' => new_resource.cpu_shares,
-    'cidfile' => cidfile,
+    'cidfile' => new_resource.cidfile,
     'detach' => new_resource.detach,
     'dns' => Array(new_resource.dns),
     'dns-search' => Array(new_resource.dns_search),
     'env' => Array(new_resource.env),
+    'env-file' => new_resource.env_file,
     'entrypoint' => new_resource.entrypoint,
     'expose' => Array(new_resource.expose),
     'hostname' => new_resource.hostname,
@@ -289,6 +338,7 @@ def run
     'link' => Array(new_resource.link),
     'lxc-conf' => Array(new_resource.lxc_conf),
     'memory' => new_resource.memory,
+    'net' => new_resource.net,
     'networking' => new_resource.networking,
     'name' => container_name,
     'opt' => Array(new_resource.opt),
