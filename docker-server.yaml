@@ -195,7 +195,7 @@ resources:
       save_private_key: true
 
   docker_server:
-    type: "Rackspace::Cloud::Server"
+    type: "OS::Nova::Server"
     properties:
       name: { get_param: server_hostname }
       flavor: { get_param: flavor }
