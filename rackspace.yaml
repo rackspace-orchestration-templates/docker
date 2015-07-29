@@ -91,3 +91,6 @@ instructions: |
   Linux](http://www.rackspace.com/knowledge_center/article/logging-in-with-a-ssh-private-key-on-linuxmac)
   as well as [Windows using
   PuTTY](http://www.rackspace.com/knowledge_center/article/logging-in-with-a-ssh-private-key-on-windows).
+description: |
+  Linux server with [Docker](http://docker.io/) installed. This deployment is
+  intended for simple test cases and low traffic scenarios.
