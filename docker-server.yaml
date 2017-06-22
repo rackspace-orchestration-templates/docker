@@ -48,12 +48,11 @@ parameters:
       Server image used for all servers that are created as a part of this
       deployment.
     type: string
-    default: Ubuntu 14.04 LTS (Trusty Tahr) (PV)
+    default: Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
     constraints:
     - allowed_values:
       - Debian 7 (Wheezy) (PVHVM)
-      - Ubuntu 12.04 LTS (Precise Pangolin) (PVHVM)
-      - Ubuntu 14.04 LTS (Trusty Tahr) (PV)
+      - Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
       description: Must be a supported operating system.
 
   flavor:
@@ -71,12 +70,9 @@ parameters:
       - 8 GB General Purpose v1
       - 15 GB I/O v1
       - 30 GB I/O v1
-      - 1GB Standard Instance
-      - 2GB Standard Instance
-      - 4GB Standard Instance
-      - 8GB Standard Instance
-      - 15GB Standard Instance
-      - 30GB Standard Instance
+      - 60 GB I/O v1
+      - 90 GB I/O v1
+      - 120 GB I/O v1
       description: |
         Must be a valid Rackspace Cloud Server flavor for the region you have
         selected to deploy into.
